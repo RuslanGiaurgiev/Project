@@ -12,7 +12,7 @@ class NFCServer:
         self.baudrate = 9600
         self.ser = None
         self.registration_mode = False
-        self.master_key = "34B226517F9E36"  # Твой мастер-ключ
+        self.master_key = "34B226517F9E36"  #master-key
         
     def find_arduino_port(self):
         """Автоматический поиск порта Arduino"""
@@ -22,13 +22,13 @@ class NFCServer:
         for port in ports:
             print(f"Found: {port.device} - {port.description}")
             
-            # Проверяем common Arduino descriptions
+            # проверяем common Arduino descriptions
             if any(keyword in port.description.lower() for keyword in 
                   ['arduino', 'ch340', 'usb serial', 'com3', 'com4']):
                 print(f"✅ Arduino detected on: {port.device}")
                 return port.device
         
-        # Если автоматически не нашли, пробуем COM3
+        # пробуем COM3
         print("⚠️  Arduino not auto-detected, trying COM3")
         return 'COM3'
     
@@ -60,7 +60,7 @@ class NFCServer:
             try:
                 print(f"Attempt {attempt + 1} to connect to {self.serial_port}...")
                 self.ser = serial.Serial(self.serial_port, self.baudrate, timeout=1)
-                time.sleep(2)  # Ждем инициализации Arduino
+                time.sleep(2)  # ждем инициализации Arduino
                 print(f"✅ Connected to {self.serial_port} at {self.baudrate} baud")
                 return True
                 
@@ -71,13 +71,13 @@ class NFCServer:
                     print("Waiting 3 seconds before retry...")
                     time.sleep(3)
                     
-                    # Пробуем найти порт заново
+                    # пробуем найти порт заново
                     self.serial_port = self.find_arduino_port()
         
         print("❌ All connection attempts failed")
         return False
 
-    # Остальные методы остаются без изменений...
+   
     def log_access(self, uid: str, action: str):
         """Логирование действий"""
         conn = sqlite3.connect('nfc_database.db')
@@ -91,7 +91,7 @@ class NFCServer:
         """Обработка UID карты"""
         print(f"Processing UID: {uid}")
         
-        # Проверяем мастер-ключ
+        # проверяем мастер-ключ
         if uid == self.master_key:
             self.registration_mode = not self.registration_mode
             mode_status = "ACTIVE" if self.registration_mode else "INACTIVE"
@@ -100,13 +100,13 @@ class NFCServer:
             print(f"Master key - Registration mode: {mode_status}")
         
         elif self.registration_mode:
-            # Режим регистрации - регистрируем новую карту
+            # режим регистрации - регистрируем новую карту
             result = self.register_user(uid)
             response = f"REGISTERED:{result}"
             action = f"Registered: {result}"
         
         else:
-            # Обычная проверка доступа
+            # проверка доступа
             user = self.check_user(uid)
             if user:
                 response = f"ACCESS_GRANTED:{user}"
@@ -115,7 +115,7 @@ class NFCServer:
                 response = "ACCESS_DENIED"
                 action = "Access denied"
         
-        # Логируем действие
+        # логируем 
         self.log_access(uid, action)
         return response, action
     
@@ -124,7 +124,7 @@ class NFCServer:
         conn = sqlite3.connect('nfc_database.db')
         c = conn.cursor()
         
-        # Проверяем, не зарегистрирован ли уже
+        # проверяем, не зарегистрирован ли уже
         c.execute("SELECT name FROM users WHERE uid=?", (uid,))
         existing = c.fetchone()
         
@@ -132,7 +132,7 @@ class NFCServer:
             conn.close()
             return f"Already registered as {existing[0]}"
         
-        # Регистрируем нового пользователя
+        # регистрируем нового пользователя
         user_name = f"User_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         try:
             c.execute("INSERT INTO users (uid, name) VALUES (?, ?)", 
@@ -186,16 +186,16 @@ class NFCServer:
                     line = self.ser.readline().decode('utf-8').strip()
                     
                     if line.startswith("UID:"):
-                        uid = line[4:]  # Извлекаем UID после "UID:"
+                        uid = line[4:]  # извлекаем UID после "UID:"
                         print(f"\nReceived UID: {uid}")
                         
-                        # Обрабатываем UID
+                        # обрабатываем UID
                         response, action = self.handle_uid(uid)
                         
-                        # Отправляем ответ в Arduino
+                        # отправляем ответ в Arduino
                         self.send_to_arduino(response)
                         
-                        # Выводим в консоль
+                        # выводим в консоль
                         print(f"Action: {action}")
                         print(f"Response: {response}")
                         print("-" * 40)
@@ -216,7 +216,7 @@ class NFCServer:
         print("Commands: 'users' - show users, 'exit' - quit")
         print("=" * 50)
         
-        # Инициализация
+        
         self.init_database()
         
         if not self.connect_serial():
@@ -228,11 +228,11 @@ class NFCServer:
             print("4. Try running as Administrator")
             return
         
-        # Запускаем мониторинг в отдельном потоке
+        # запускаем мониторинг в отдельном потоке
         monitor_thread = threading.Thread(target=self.monitor_serial, daemon=True)
         monitor_thread.start()
         
-        # Основной цикл для команд
+        # основной цикл для команд
         try:
             while True:
                 command = input().strip().lower()
@@ -265,4 +265,5 @@ class NFCServer:
 
 if __name__ == '__main__':
     server = NFCServer()
+
     server.start()
